@@ -18,9 +18,9 @@ app = FastAPI(title="AI Interview Coach API", version="1.0.0")
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domain
+    allow_origins=["*"],  # Will work for same-origin requests in production
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -136,6 +136,17 @@ async def clear_history():
     global user_history
     user_history = []
     return {"status": "success"}
+
+# Catch-all route to serve index.html for any unmatched routes (SPA behavior)
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    """Serve the main HTML file for any unmatched routes"""
+    # If it's an API route that doesn't exist, return 404
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # For any other route, serve the main HTML file
+    return FileResponse("../frontend/index.html")
 
 if __name__ == "__main__":
     import uvicorn
