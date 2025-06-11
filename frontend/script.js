@@ -33,6 +33,22 @@ const archiveModalExportBtn = document.getElementById('archive-modal-export');
 const archiveModalClearBtn = document.getElementById('archive-modal-clear');
 const expandAllBtn = document.getElementById('expand-all-btn');
 const collapseAllBtn = document.getElementById('collapse-all-btn');
+const selectAllBtn = document.getElementById('select-all-btn');
+
+// Selection state
+let selectedQuestions = new Set();
+let isSelectAllMode = true; // true = "Select All", false = "Unselect All"
+
+// Custom modal elements
+const customAlertModal = document.getElementById('custom-alert-modal');
+const customConfirmModal = document.getElementById('custom-confirm-modal');
+const alertTitle = document.getElementById('alert-title');
+const alertMessage = document.getElementById('alert-message');
+const alertOkBtn = document.getElementById('alert-ok-btn');
+const confirmTitle = document.getElementById('confirm-title');
+const confirmMessage = document.getElementById('confirm-message');
+const confirmOkBtn = document.getElementById('confirm-ok-btn');
+const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
 
 // Auto-reset session on page load
 async function autoResetSession() {
@@ -415,8 +431,7 @@ function exportHistory() {
         exportText += `AI Feedback:\n${entry.feedback}\n\n`;
         exportText += '='.repeat(50) + '\n\n';
     });
-    
-    const blob = new Blob([exportText], { type: 'text/plain' });
+      const blob = new Blob([exportText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -425,11 +440,25 @@ function exportHistory() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    // Show success message
+    showCustomAlert('Your answer history has been exported successfully!', 'Export Complete', 'fas fa-check-circle');
 }
 
 // Clear history
 async function clearHistory() {
-    if (!confirm('Are you sure you want to clear all your answer history? This action cannot be undone.')) {
+    if (selectedQuestions.size > 0) {
+        await deleteSelectedQuestions();
+        return;
+    }
+    
+    const confirmed = await showCustomConfirm(
+        'Are you sure you want to clear all your answer history? This action cannot be undone.',
+        'Clear History',
+        'fas fa-exclamation-triangle'
+    );
+    
+    if (!confirmed) {
         return;
     }
     
@@ -461,6 +490,95 @@ function showLoading(show) {
             }
         }, 300); // Match the CSS transition duration
     }
+}
+
+// Custom Alert Modal
+function showCustomAlert(message, title = 'Notice', icon = 'fas fa-info-circle') {
+    return new Promise((resolve) => {
+        alertTitle.innerHTML = `<i class="${icon}"></i> ${title}`;
+        alertMessage.textContent = message;
+        
+        customAlertModal.style.display = 'flex';
+        customAlertModal.offsetHeight;
+        customAlertModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        const handleOk = () => {
+            customAlertModal.classList.remove('show');
+            setTimeout(() => {
+                if (!customAlertModal.classList.contains('show')) {
+                    customAlertModal.style.display = 'none';
+                }
+            }, 300);
+            document.body.style.overflow = '';
+            alertOkBtn.removeEventListener('click', handleOk);
+            resolve();
+        };
+        
+        alertOkBtn.addEventListener('click', handleOk);
+        
+        // Handle escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' && customAlertModal.classList.contains('show')) {
+                handleOk();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    });
+}
+
+// Custom Confirm Modal
+function showCustomConfirm(message, title = 'Confirm', icon = 'fas fa-question-circle') {
+    return new Promise((resolve) => {
+        confirmTitle.innerHTML = `<i class="${icon}"></i> ${title}`;
+        confirmMessage.textContent = message;
+        
+        customConfirmModal.style.display = 'flex';
+        customConfirmModal.offsetHeight;
+        customConfirmModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        const cleanup = () => {
+            customConfirmModal.classList.remove('show');
+            setTimeout(() => {
+                if (!customConfirmModal.classList.contains('show')) {
+                    customConfirmModal.style.display = 'none';
+                }
+            }, 300);
+            document.body.style.overflow = '';
+            confirmOkBtn.removeEventListener('click', handleOk);
+            confirmCancelBtn.removeEventListener('click', handleCancel);
+            document.removeEventListener('keydown', handleEscape);
+        };
+        
+        const handleOk = () => {
+            cleanup();
+            resolve(true);
+        };
+        
+        const handleCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+        
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' && customConfirmModal.classList.contains('show')) {
+                handleCancel();
+            }
+        };
+        
+        confirmOkBtn.addEventListener('click', handleOk);
+        confirmCancelBtn.addEventListener('click', handleCancel);
+        document.addEventListener('keydown', handleEscape);
+        
+        // Handle clicking outside modal
+        customConfirmModal.addEventListener('click', (e) => {
+            if (e.target === customConfirmModal) {
+                handleCancel();
+            }
+        }, { once: true });
+    });
 }
 
 // Show archive modal
@@ -498,6 +616,12 @@ function updateArchiveModalDisplay() {
         filteredHistory = questionHistory.filter(entry => entry.category === filterValue);
     }
     
+    // Reset selection state when updating display
+    selectedQuestions.clear();
+    isSelectAllMode = true;
+    updateClearButtonText();
+    updateSelectAllButton();
+    
     if (filteredHistory.length === 0) {
         archiveModalContent.innerHTML = `
             <div class="empty-state" style="padding: 60px 20px;">
@@ -520,10 +644,26 @@ function updateArchiveModalDisplay() {
 function createArchiveModalHistoryItem(entry, questionNumber) {
     const div = document.createElement('div');
     div.className = 'history-item';
+    div.dataset.questionIndex = questionHistory.indexOf(entry);
     
     const styleInfo = entry.feedback_style ? ` (${entry.feedback_style})` : '';
     
-    // Create the header with collapse/expand functionality
+    // Create controls (select, delete, and expand buttons)
+    const controlsDiv = document.createElement('div');
+    controlsDiv.className = 'history-item-controls';
+    controlsDiv.innerHTML = `
+        <button class="history-item-select" data-question-index="${questionHistory.indexOf(entry)}">
+            <i class="fas fa-check"></i> Select
+        </button>
+        <button class="history-item-delete" data-question-index="${questionHistory.indexOf(entry)}">
+            <i class="fas fa-trash"></i>
+        </button>
+        <button class="history-item-expand" data-question-index="${questionHistory.indexOf(entry)}">
+            <i class="fas fa-chevron-down"></i>
+        </button>
+    `;
+    
+    // Create the header (no longer clickable)
     const headerDiv = document.createElement('div');
     headerDiv.className = 'history-item-header';
     headerDiv.innerHTML = `
@@ -531,15 +671,7 @@ function createArchiveModalHistoryItem(entry, questionNumber) {
             <i class="fas fa-question-circle" style="color: #667eea;"></i>
             Question ${questionNumber} [${entry.category}]${styleInfo}
         </div>
-        <div class="collapse-toggle">
-            <i class="fas fa-chevron-down"></i>
-        </div>
     `;
-    
-    // Add click event for collapse/expand
-    headerDiv.addEventListener('click', () => {
-        toggleHistoryItem(div);
-    });
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'history-item-content';
@@ -560,8 +692,18 @@ function createArchiveModalHistoryItem(entry, questionNumber) {
         </div>
     `;
     
+    div.appendChild(controlsDiv);
     div.appendChild(headerDiv);
     div.appendChild(contentDiv);
+    
+    // Add event listeners for controls
+    const selectBtn = controlsDiv.querySelector('.history-item-select');
+    const deleteBtn = controlsDiv.querySelector('.history-item-delete');
+    const expandBtn = controlsDiv.querySelector('.history-item-expand');
+    
+    selectBtn.addEventListener('click', () => toggleQuestionSelection(entry, selectBtn, div));
+    deleteBtn.addEventListener('click', () => deleteQuestion(entry));
+    expandBtn.addEventListener('click', () => toggleHistoryItemWithButton(div, expandBtn));
     
     return div;
 }
@@ -574,9 +716,16 @@ function toggleHistoryItem(historyItem) {
 // Expand all history items
 function expandAllHistoryItems() {
     const historyItems = archiveModalContent.querySelectorAll('.history-item');
+    const expandButtons = archiveModalContent.querySelectorAll('.history-item-expand');
+    
     historyItems.forEach((item, index) => {
         setTimeout(() => {
             item.classList.remove('collapsed');
+            const expandBtn = expandButtons[index];
+            if (expandBtn) {
+                expandBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+                expandBtn.classList.remove('collapsed');
+            }
         }, index * 50); // Stagger the animations for a smooth cascade effect
     });
 }
@@ -584,16 +733,221 @@ function expandAllHistoryItems() {
 // Collapse all history items
 function collapseAllHistoryItems() {
     const historyItems = archiveModalContent.querySelectorAll('.history-item');
+    const expandButtons = archiveModalContent.querySelectorAll('.history-item-expand');
+    
     historyItems.forEach((item, index) => {
         setTimeout(() => {
             item.classList.add('collapsed');
+            const expandBtn = expandButtons[index];
+            if (expandBtn) {
+                expandBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                expandBtn.classList.add('collapsed');
+            }
         }, index * 30); // Faster stagger for collapse
     });
 }
 
+// Toggle individual history item collapse/expand with button
+function toggleHistoryItemWithButton(historyItem, expandBtn) {
+    const isCollapsed = historyItem.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        // Expanding
+        historyItem.classList.remove('collapsed');
+        expandBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        expandBtn.classList.remove('collapsed');
+    } else {
+        // Collapsing
+        historyItem.classList.add('collapsed');
+        expandBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        expandBtn.classList.add('collapsed');
+    }
+}
+
+// Toggle question selection with button
+function toggleQuestionSelection(entry, selectBtn, historyItem) {
+    const entryIndex = questionHistory.indexOf(entry);
+    const isSelected = selectedQuestions.has(entryIndex);
+    
+    if (isSelected) {
+        // Unselecting
+        selectedQuestions.delete(entryIndex);
+        historyItem.classList.remove('selected');
+        selectBtn.classList.remove('selected');
+        selectBtn.innerHTML = '<i class="fas fa-check"></i> Select';
+    } else {
+        // Selecting
+        selectedQuestions.add(entryIndex);
+        historyItem.classList.add('selected');
+        selectBtn.classList.add('selected');
+        selectBtn.innerHTML = '<i class="fas fa-times"></i> Unselect';
+    }
+    
+    updateClearButtonText();
+    updateSelectAllButton();
+}
+
+// Handle question selection (legacy function - keeping for compatibility)
+function handleQuestionSelection(entry, isSelected) {
+    const entryIndex = questionHistory.indexOf(entry);
+    const historyItem = archiveModalContent.querySelector(`[data-question-index="${entryIndex}"]`);
+    
+    if (isSelected) {
+        selectedQuestions.add(entryIndex);
+        historyItem.classList.add('selected');
+    } else {
+        selectedQuestions.delete(entryIndex);
+        historyItem.classList.remove('selected');
+    }
+    
+    updateClearButtonText();
+    updateSelectAllButton();
+}
+
+// Delete individual question
+async function deleteQuestion(entry) {
+    const confirmed = await showCustomConfirm(
+        'Are you sure you want to delete this question and answer? This action cannot be undone.',
+        'Delete Question',
+        'fas fa-exclamation-triangle'
+    );
+    
+    if (!confirmed) return;
+    
+    const entryIndex = questionHistory.indexOf(entry);
+    
+    try {
+        // Remove from backend (we'll need to implement this endpoint)
+        await fetch(`${API_BASE_URL}/history/${entryIndex}`, { 
+            method: 'DELETE' 
+        });
+        
+        // Remove from frontend
+        questionHistory.splice(entryIndex, 1);
+        selectedQuestions.delete(entryIndex);
+        
+        // Update indices for remaining selected items
+        const newSelectedQuestions = new Set();
+        selectedQuestions.forEach(index => {
+            if (index > entryIndex) {
+                newSelectedQuestions.add(index - 1);
+            } else if (index < entryIndex) {
+                newSelectedQuestions.add(index);
+            }
+        });
+        selectedQuestions = newSelectedQuestions;
+        
+        updateArchiveModalDisplay();
+        updateHistoryDisplay();
+        updateClearButtonText();
+        updateSelectAllButton();
+        
+    } catch (error) {
+        console.error('Error deleting question:', error);
+        showError('Failed to delete question. Please try again.');
+    }
+}
+
+// Delete selected questions
+async function deleteSelectedQuestions() {
+    if (selectedQuestions.size === 0) {
+        // If no questions selected, clear all
+        await clearHistory();
+        return;
+    }
+    
+    const confirmed = await showCustomConfirm(
+        `Are you sure you want to delete ${selectedQuestions.size} selected question(s)? This action cannot be undone.`,
+        'Delete Selected Questions',
+        'fas fa-exclamation-triangle'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        // Sort indices in descending order to avoid index shifting issues
+        const sortedIndices = Array.from(selectedQuestions).sort((a, b) => b - a);
+        
+        // Delete from backend (we'll implement batch delete)
+        await fetch(`${API_BASE_URL}/history/batch`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ indices: sortedIndices })
+        });
+        
+        // Remove from frontend
+        sortedIndices.forEach(index => {
+            questionHistory.splice(index, 1);
+        });
+        
+        selectedQuestions.clear();
+        updateArchiveModalDisplay();
+        updateHistoryDisplay();
+        updateClearButtonText();
+        updateSelectAllButton();
+        
+    } catch (error) {
+        console.error('Error deleting selected questions:', error);
+        showError('Failed to delete selected questions. Please try again.');
+    }
+}
+
+// Toggle select all/unselect all
+function toggleSelectAll() {
+    const selectButtons = archiveModalContent.querySelectorAll('.history-item-select');
+    const historyItems = archiveModalContent.querySelectorAll('.history-item');
+    
+    if (isSelectAllMode) {
+        // Select all
+        selectButtons.forEach((selectBtn, index) => {
+            const questionIndex = parseInt(selectBtn.dataset.questionIndex);
+            selectedQuestions.add(questionIndex);
+            
+            const historyItem = selectBtn.closest('.history-item');
+            historyItem.classList.add('selected');
+            selectBtn.classList.add('selected');
+            selectBtn.innerHTML = '<i class="fas fa-times"></i> Unselect';
+        });
+        isSelectAllMode = false;
+    } else {
+        // Unselect all
+        selectButtons.forEach(selectBtn => {
+            const historyItem = selectBtn.closest('.history-item');
+            historyItem.classList.remove('selected');
+            selectBtn.classList.remove('selected');
+            selectBtn.innerHTML = '<i class="fas fa-check"></i> Select';
+        });
+        selectedQuestions.clear();
+        isSelectAllMode = true;
+    }
+    
+    updateClearButtonText();
+    updateSelectAllButton();
+}
+
+// Update clear button text based on selection
+function updateClearButtonText() {
+    const clearBtn = document.getElementById('archive-modal-clear');
+    if (selectedQuestions.size > 0) {
+        clearBtn.innerHTML = `<i class="fas fa-trash"></i> Clear Selected (${selectedQuestions.size})`;
+    } else {
+        clearBtn.innerHTML = `<i class="fas fa-trash"></i> Clear All`;
+    }
+}
+
+// Update select all button text
+function updateSelectAllButton() {
+    const selectBtn = document.getElementById('select-all-btn');
+    if (isSelectAllMode) {
+        selectBtn.innerHTML = `<i class="fas fa-check-square"></i> Select All`;
+    } else {
+        selectBtn.innerHTML = `<i class="fas fa-square"></i> Unselect All`;
+    }
+}
+
 // Show error message
 function showError(message) {
-    alert(message); // In a production app, you'd want a better error display
+    showCustomAlert(message, 'Error', 'fas fa-exclamation-triangle');
 }
 
 // Setup event listeners
@@ -638,10 +992,12 @@ function setupEventListeners() {
         await clearHistory();
         updateArchiveModalDisplay();
     });
-    
-    // Expand/Collapse all buttons
+      // Expand/Collapse all buttons
     expandAllBtn.addEventListener('click', expandAllHistoryItems);
     collapseAllBtn.addEventListener('click', collapseAllHistoryItems);
+    
+    // Selection buttons
+    selectAllBtn.addEventListener('click', toggleSelectAll);
     
     // Close modal when clicking outside
     archiveModal.addEventListener('click', (e) => {

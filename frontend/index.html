@@ -90,7 +90,7 @@
                         <option value="All">All Categories</option>
                     </select>
                     <button id="expand-history-btn" class="btn btn-outline small">
-                        <i class="fas fa-expand"></i> Expand
+                        <i class="fas fa-expand"></i> Expand for more options
                     </button>
                     <button id="export-btn" class="btn btn-outline small">
                         <i class="fas fa-download"></i> Export
@@ -127,6 +127,9 @@
                         <option value="All">All Categories</option>
                     </select>
                     <div class="archive-modal-actions">
+                        <button id="select-all-btn" class="btn btn-outline small">
+                            <i class="fas fa-check-square"></i> Select All
+                        </button>
                         <button id="expand-all-btn" class="btn btn-outline small">
                             <i class="fas fa-expand-arrows-alt"></i> Expand All
                         </button>
@@ -137,7 +140,7 @@
                             <i class="fas fa-download"></i> Export
                         </button>
                         <button id="archive-modal-clear" class="btn btn-outline small">
-                            <i class="fas fa-trash"></i> Clear
+                            <i class="fas fa-trash"></i> Clear All
                         </button>
                     </div>
                 </div>
@@ -146,6 +149,39 @@
                 </div>
             </div>
         </div>
-    </div><script src="/static/script.js"></script>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-modal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3 id="alert-title"><i class="fas fa-info-circle"></i> Notice</h3>
+            </div>
+            <div class="modal-body">
+                <p id="alert-message"></p>
+                <div class="modal-actions">
+                    <button id="alert-ok-btn" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="custom-confirm-modal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3 id="confirm-title"><i class="fas fa-question-circle"></i> Confirm</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+                <div class="modal-actions">
+                    <button id="confirm-cancel-btn" class="btn btn-outline">Cancel</button>
+                    <button id="confirm-ok-btn" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script src="/static/script.js"></script>
 </body>
 </html>

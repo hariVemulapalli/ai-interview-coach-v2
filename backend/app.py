@@ -197,6 +197,47 @@ async def clear_history(session_id: Optional[str] = Cookie(None)):
     response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
     return response
 
+@app.delete("/api/history/{index}")
+async def delete_history_item(index: int, session_id: Optional[str] = Cookie(None)):
+    """Delete a specific history item by index"""
+    session_id = get_or_create_session(session_id)
+    user_history = session_data[session_id]['history']
+    
+    if 0 <= index < len(user_history):
+        user_history.pop(index)
+        response_data = {"status": "success"}
+    else:
+        raise HTTPException(status_code=404, detail="History item not found")
+    
+    response = Response(content=json.dumps(response_data), media_type="application/json")
+    response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
+    return response
+
+class BatchDeleteRequest(BaseModel):
+    indices: List[int]
+
+@app.delete("/api/history/batch")
+async def delete_history_batch(request: BatchDeleteRequest, session_id: Optional[str] = Cookie(None)):
+    """Delete multiple history items by indices"""
+    session_id = get_or_create_session(session_id)
+    user_history = session_data[session_id]['history']
+    
+    # Sort indices in descending order to avoid index shifting issues
+    sorted_indices = sorted(request.indices, reverse=True)
+    
+    # Validate all indices are within range
+    for index in sorted_indices:
+        if not (0 <= index < len(user_history)):
+            raise HTTPException(status_code=400, detail=f"Invalid index: {index}")
+    
+    # Delete items starting from highest index
+    for index in sorted_indices:
+        user_history.pop(index)
+    
+    response = Response(content=json.dumps({"status": "success"}), media_type="application/json")
+    response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
+    return response
+
 @app.get("/{full_path:path}")
 async def catch_all(full_path: str):
     """Serve the main HTML file for any unmatched routes"""

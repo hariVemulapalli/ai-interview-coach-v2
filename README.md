@@ -22,6 +22,7 @@ This application uses a modern web architecture:
 - **AI Integration**: Google Gemini AI for answer evaluation
 - **Styling**: Custom CSS with modern design principles
 - **Source Code Management**: GitHub for source code hosting and CI/CD process
+- **Deployment**: Render for hosting the live application
 
 ⚠️ **Note**: This app is hosted on Render’s free tier and may take a few seconds to load after inactivity due to cold starts.
 
