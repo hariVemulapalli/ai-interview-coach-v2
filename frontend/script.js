@@ -21,7 +21,18 @@ const historyFilter = document.getElementById('history-filter');
 const historyContent = document.getElementById('history-content');
 const exportBtn = document.getElementById('export-btn');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
+const expandHistoryBtn = document.getElementById('expand-history-btn');
 const loadingModal = document.getElementById('loading-modal');
+
+// Answer history modal elements
+const archiveModal = document.getElementById('archive-modal');
+const closeArchiveModalBtn = document.getElementById('close-archive-modal');
+const archiveModalFilter = document.getElementById('archive-modal-filter');
+const archiveModalContent = document.getElementById('archive-modal-content');
+const archiveModalExportBtn = document.getElementById('archive-modal-export');
+const archiveModalClearBtn = document.getElementById('archive-modal-clear');
+const expandAllBtn = document.getElementById('expand-all-btn');
+const collapseAllBtn = document.getElementById('collapse-all-btn');
 
 // Auto-reset session on page load
 async function autoResetSession() {
@@ -129,6 +140,33 @@ function updateHistoryFilter(categories) {
     // Restore previous selection if it still exists
     if (currentValue && [...historyFilter.options].some(opt => opt.value === currentValue)) {
         historyFilter.value = currentValue;
+    }
+    
+    // Update archive modal filter as well
+    updateArchiveModalFilter(categories);
+}
+
+// Update archive modal filter options
+function updateArchiveModalFilter(categories) {
+    const currentValue = archiveModalFilter.value;
+    archiveModalFilter.innerHTML = '<option value="All">All Categories</option>';
+    
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        archiveModalFilter.appendChild(option);
+    });
+    
+    // Add Custom option
+    const customOption = document.createElement('option');
+    customOption.value = 'Custom';
+    customOption.textContent = 'Custom';
+    archiveModalFilter.appendChild(customOption);
+    
+    // Restore previous selection if it still exists
+    if (currentValue && [...archiveModalFilter.options].some(opt => opt.value === currentValue)) {
+        archiveModalFilter.value = currentValue;
     }
 }
 
@@ -305,7 +343,18 @@ function createHistoryItem(entry, questionNumber) {
     // Create the content with Markdown rendering for feedback
     const headerDiv = document.createElement('div');
     headerDiv.className = 'history-item-header';
-    headerDiv.textContent = `Q${questionNumber} [${entry.category}]${styleInfo}`;
+    headerDiv.style.cursor = 'pointer';
+    headerDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Q${questionNumber} [${entry.category}]${styleInfo}</span>
+            <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: #64748b; transition: transform 0.3s ease;"></i>
+        </div>
+    `;
+    
+    // Add click event for collapse/expand
+    headerDiv.addEventListener('click', () => {
+        toggleSidebarHistoryItem(div);
+    });
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'history-item-content';
@@ -320,6 +369,22 @@ function createHistoryItem(entry, questionNumber) {
     div.appendChild(contentDiv);
     
     return div;
+}
+
+// Toggle sidebar history item collapse/expand
+function toggleSidebarHistoryItem(historyItem) {
+    const chevron = historyItem.querySelector('.fa-chevron-down');
+    const content = historyItem.querySelector('.history-item-content');
+    
+    if (historyItem.classList.contains('collapsed')) {
+        // Expanding
+        historyItem.classList.remove('collapsed');
+        chevron.style.transform = 'rotate(0deg)';
+    } else {
+        // Collapsing
+        historyItem.classList.add('collapsed');
+        chevron.style.transform = 'rotate(-90deg)';
+    }
 }
 
 // Helper function to escape HTML to prevent XSS
@@ -380,7 +445,150 @@ async function clearHistory() {
 
 // Show/hide loading modal
 function showLoading(show) {
-    loadingModal.style.display = show ? 'flex' : 'none';
+    if (show) {
+        loadingModal.style.display = 'flex';
+        // Force a reflow to ensure the display change takes effect
+        loadingModal.offsetHeight;
+        // Add the show class for animation
+        loadingModal.classList.add('show');
+    } else {
+        // Remove the show class for exit animation
+        loadingModal.classList.remove('show');
+        // Wait for animation to complete before hiding
+        setTimeout(() => {
+            if (!loadingModal.classList.contains('show')) {
+                loadingModal.style.display = 'none';
+            }
+        }, 300); // Match the CSS transition duration
+    }
+}
+
+// Show archive modal
+function showArchiveModal() {
+    archiveModal.style.display = 'flex';
+    // Force a reflow to ensure the display change takes effect
+    archiveModal.offsetHeight;
+    // Add the show class for animation
+    archiveModal.classList.add('show');
+    updateArchiveModalDisplay();
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+}
+
+// Hide archive modal
+function hideArchiveModal() {
+    // Remove the show class for exit animation
+    archiveModal.classList.remove('show');
+    // Wait for animation to complete before hiding
+    setTimeout(() => {
+        if (!archiveModal.classList.contains('show')) {
+            archiveModal.style.display = 'none';
+        }
+    }, 300); // Match the CSS transition duration
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+// Update archive modal display
+function updateArchiveModalDisplay() {
+    const filterValue = archiveModalFilter.value;
+    let filteredHistory = questionHistory;
+    
+    if (filterValue !== 'All') {
+        filteredHistory = questionHistory.filter(entry => entry.category === filterValue);
+    }
+    
+    if (filteredHistory.length === 0) {
+        archiveModalContent.innerHTML = `
+            <div class="empty-state" style="padding: 60px 20px;">
+                <i class="fas fa-clipboard-list" style="font-size: 4rem; margin-bottom: 20px; opacity: 0.3;"></i>
+                <p style="font-size: 1.1rem; color: #64748b;">No answers found for the selected filter.</p>
+                <p style="color: #9ca3af; margin-top: 10px;">Try selecting a different category or answer some questions first.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    archiveModalContent.innerHTML = '';
+    filteredHistory.forEach((entry, index) => {
+        const historyItem = createArchiveModalHistoryItem(entry, filteredHistory.length - index);
+        archiveModalContent.appendChild(historyItem);
+    });
+}
+
+// Create history item element for archive modal (larger format)
+function createArchiveModalHistoryItem(entry, questionNumber) {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    
+    const styleInfo = entry.feedback_style ? ` (${entry.feedback_style})` : '';
+    
+    // Create the header with collapse/expand functionality
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'history-item-header';
+    headerDiv.innerHTML = `
+        <div class="question-title">
+            <i class="fas fa-question-circle" style="color: #667eea;"></i>
+            Question ${questionNumber} [${entry.category}]${styleInfo}
+        </div>
+        <div class="collapse-toggle">
+            <i class="fas fa-chevron-down"></i>
+        </div>
+    `;
+    
+    // Add click event for collapse/expand
+    headerDiv.addEventListener('click', () => {
+        toggleHistoryItem(div);
+    });
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'history-item-content';
+    contentDiv.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <strong><i class="fas fa-brain" style="margin-right: 6px; color: #667eea;"></i>Question:</strong>
+            <div style="margin-top: 8px; padding: 12px; background: white; border-radius: 6px; border-left: 3px solid #667eea;">${escapeHtml(entry.question)}</div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <strong><i class="fas fa-user" style="margin-right: 6px; color: #10b981;"></i>Your Answer:</strong>
+            <div style="margin-top: 8px; padding: 12px; background: white; border-radius: 6px; border-left: 3px solid #10b981;">${escapeHtml(entry.answer)}</div>
+        </div>
+        
+        <div>
+            <strong><i class="fas fa-robot" style="margin-right: 6px; color: #f59e0b;"></i>AI Feedback:</strong>
+            <div class="feedback-markdown">${marked.parse(entry.feedback)}</div>
+        </div>
+    `;
+    
+    div.appendChild(headerDiv);
+    div.appendChild(contentDiv);
+    
+    return div;
+}
+
+// Toggle individual history item collapse/expand
+function toggleHistoryItem(historyItem) {
+    historyItem.classList.toggle('collapsed');
+}
+
+// Expand all history items
+function expandAllHistoryItems() {
+    const historyItems = archiveModalContent.querySelectorAll('.history-item');
+    historyItems.forEach((item, index) => {
+        setTimeout(() => {
+            item.classList.remove('collapsed');
+        }, index * 50); // Stagger the animations for a smooth cascade effect
+    });
+}
+
+// Collapse all history items
+function collapseAllHistoryItems() {
+    const historyItems = archiveModalContent.querySelectorAll('.history-item');
+    historyItems.forEach((item, index) => {
+        setTimeout(() => {
+            item.classList.add('collapsed');
+        }, index * 30); // Faster stagger for collapse
+    });
 }
 
 // Show error message
@@ -417,9 +625,36 @@ function setupEventListeners() {
     
     // Export button
     exportBtn.addEventListener('click', exportHistory);
-    
-    // Clear history button
+      // Clear history button
     clearHistoryBtn.addEventListener('click', clearHistory);
+    
+    // Expand history button
+    expandHistoryBtn.addEventListener('click', showArchiveModal);
+      // Archive modal controls
+    closeArchiveModalBtn.addEventListener('click', hideArchiveModal);
+    archiveModalFilter.addEventListener('change', updateArchiveModalDisplay);
+    archiveModalExportBtn.addEventListener('click', exportHistory);
+    archiveModalClearBtn.addEventListener('click', async () => {
+        await clearHistory();
+        updateArchiveModalDisplay();
+    });
+    
+    // Expand/Collapse all buttons
+    expandAllBtn.addEventListener('click', expandAllHistoryItems);
+    collapseAllBtn.addEventListener('click', collapseAllHistoryItems);
+    
+    // Close modal when clicking outside
+    archiveModal.addEventListener('click', (e) => {
+        if (e.target === archiveModal) {
+            hideArchiveModal();
+        }
+    });
+      // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && archiveModal.classList.contains('show')) {
+            hideArchiveModal();
+        }
+    });
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {

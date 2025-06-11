@@ -82,16 +82,16 @@
                     </div>
                 </section>
             </div>
-        </main>
-
-        <!-- History Sidebar -->
+        </main>        <!-- History Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h3><i class="fas fa-history"></i> Answer Archive</h3>
-                <div class="sidebar-controls">
+                <h3><i class="fas fa-history"></i> Answer History</h3><div class="sidebar-controls">
                     <select id="history-filter" class="select-input small">
                         <option value="All">All Categories</option>
                     </select>
+                    <button id="expand-history-btn" class="btn btn-outline small">
+                        <i class="fas fa-expand"></i> Expand
+                    </button>
                     <button id="export-btn" class="btn btn-outline small">
                         <i class="fas fa-download"></i> Export
                     </button>
@@ -107,14 +107,45 @@
                 </div>
             </div>
         </aside>
-    </div>
-
-    <!-- Loading Modal -->
-    <div id="loading-modal" class="modal" style="display: none;">
+    </div>    <!-- Loading Modal -->
+    <div id="loading-modal" class="modal">
         <div class="modal-content">
             <div class="spinner"></div>
             <p>Analyzing your answer...</p>
         </div>
-    </div>    <script src="/static/script.js"></script>
+    </div>    <!-- Answer History Expanded View Modal -->
+    <div id="archive-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-history"></i> Answer History </h2>
+                <button id="close-archive-modal" class="btn-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">                <div class="archive-modal-controls">
+                    <select id="archive-modal-filter" class="select-input">
+                        <option value="All">All Categories</option>
+                    </select>
+                    <div class="archive-modal-actions">
+                        <button id="expand-all-btn" class="btn btn-outline small">
+                            <i class="fas fa-expand-arrows-alt"></i> Expand All
+                        </button>
+                        <button id="collapse-all-btn" class="btn btn-outline small">
+                            <i class="fas fa-compress-arrows-alt"></i> Collapse All
+                        </button>
+                        <button id="archive-modal-export" class="btn btn-outline small">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button id="archive-modal-clear" class="btn btn-outline small">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div id="archive-modal-content" class="archive-modal-content">
+                    <!-- History items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div><script src="/static/script.js"></script>
 </body>
 </html>

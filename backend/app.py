@@ -69,7 +69,7 @@ class HistoryEntry(BaseModel):
 
 # SESSION-BASED STORAGE (instead of global)
 session_data = {}
-SESSION_TIMEOUT = 0  # Will erase sessions immediately for simplicity
+SESSION_TIMEOUT = 1800  # Will erase sessions immediately for simplicity
 
 def cleanup_old_sessions():
     """Remove sessions older than timeout"""

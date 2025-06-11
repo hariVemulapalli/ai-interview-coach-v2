@@ -6,9 +6,9 @@ A modern web application for practicing behavioral interview questions with AI-p
 
 - 🎲 Random or category-based question selection
 - 📝 Instant AI-generated feedback (Clarity, STAR use, Impact)
-- 📜 Answer archive
+- 📜 Answer history
 - 💾 Export all your answers and feedback as a .txt file
-- 🗂️ Filter archive by category
+- 🗂️ Filter saved answers by category
 - ✍️ Add custom questions
 - 🎛️ Choose feedback style (Detailed, Concise, Friendly)
 - 📱 Works perfectly on desktop, tablet, and mobile devices
