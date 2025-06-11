@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Cookie, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,6 +9,8 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 from typing import List, Dict, Optional
+from uuid import uuid4
+import time
 
 # Load environment variables
 load_dotenv()
@@ -18,14 +20,18 @@ app = FastAPI(title="AI Interview Coach API", version="1.0.0")
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Will work for same-origin requests in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
+# Get the directory paths
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+
 # Mount static files
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(project_root, "frontend")), name="static")
 
 # Configure Gemini AI
 api_key = os.getenv("GEMINI_API_KEY")
@@ -36,12 +42,13 @@ model = genai.GenerativeModel("gemini-2.0-flash")
 
 # Load questions
 try:
-    with open("../questions.json", "r") as f:
+    questions_path = os.path.join(project_root, "questions.json")
+    with open(questions_path, "r") as f:
         questions_by_category = json.load(f)
 except FileNotFoundError:
     questions_by_category = {}
 
-# Pydantic models for request/response
+# Pydantic models
 class EvaluationRequest(BaseModel):
     answer: str
     style: str = "Detailed"
@@ -60,13 +67,34 @@ class HistoryEntry(BaseModel):
     feedback: str
     feedback_style: str
 
-# In-memory storage for demo (in production, use a proper database)
-user_history: List[Dict] = []
+# SESSION-BASED STORAGE (instead of global)
+session_data = {}
+SESSION_TIMEOUT = 0  # Will erase sessions immediately for simplicity
+
+def cleanup_old_sessions():
+    """Remove sessions older than timeout"""
+    current_time = time.time()
+    expired = [sid for sid, data in session_data.items() 
+               if current_time - data.get('created', 0) > SESSION_TIMEOUT]
+    for sid in expired:
+        del session_data[sid]
+
+def get_or_create_session(session_id: Optional[str] = None):
+    """Get existing session or create new one"""
+    cleanup_old_sessions()
+    
+    if not session_id or session_id not in session_data:
+        session_id = str(uuid4())
+        session_data[session_id] = {
+            'history': [],
+            'created': time.time()
+        }
+    return session_id
 
 @app.get("/")
 async def read_root():
     """Serve the main HTML page"""
-    return FileResponse("../frontend/index.html")
+    return FileResponse(os.path.join(project_root, "frontend", "index.html"))
 
 @app.get("/api/categories")
 async def get_categories():
@@ -74,17 +102,26 @@ async def get_categories():
     return {"categories": list(questions_by_category.keys())}
 
 @app.get("/api/question/{category}")
-async def get_random_question(category: str):
+async def get_random_question(category: str, session_id: Optional[str] = Cookie(None)):
     """Get a random question from a specific category"""
     if category not in questions_by_category:
         raise HTTPException(status_code=404, detail="Category not found")
     
+    session_id = get_or_create_session(session_id)
     question = random.choice(questions_by_category[category])
-    return QuestionResponse(question=question, category=category)
+    
+    response = Response(content=json.dumps({
+        "question": question, 
+        "category": category
+    }), media_type="application/json")
+    response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
+    return response
 
 @app.post("/api/evaluate")
-async def evaluate_answer(request: EvaluationRequest):
+async def evaluate_answer(request: EvaluationRequest, session_id: Optional[str] = Cookie(None)):
     """Evaluate a user's answer using AI"""
+    session_id = get_or_create_session(session_id)
+    
     try:
         style_instructions = {
             "Detailed": "Provide a thorough and detailed analysis.",
@@ -111,42 +148,62 @@ Then provide short, actionable feedback on how to improve.
 """
         
         response = model.generate_content(prompt)
-        return EvaluationResponse(feedback=response.text)
-    
+        feedback = response.text
+        
+        # Create response with session cookie
+        json_response = Response(
+            content=json.dumps({"feedback": feedback}),
+            media_type="application/json"
+        )
+        json_response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
+        return json_response
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error evaluating answer: {str(e)}")
 
 @app.post("/api/history")
-async def add_to_history(entry: HistoryEntry):
-    """Add an entry to the user's history"""
-    user_history.append(entry.dict())
-    return {"status": "success"}
+async def add_to_history(entry: HistoryEntry, session_id: Optional[str] = Cookie(None)):
+    """Add an entry to the user's session history"""
+    session_id = get_or_create_session(session_id)
+    session_data[session_id]['history'].append(entry.dict())
+    
+    response = Response(content=json.dumps({"status": "success"}), media_type="application/json")
+    response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
+    return response
 
 @app.get("/api/history")
-async def get_history(category: Optional[str] = None):
-    """Get user's history, optionally filtered by category"""
+async def get_history(category: Optional[str] = None, session_id: Optional[str] = Cookie(None)):
+    """Get user's session history, optionally filtered by category"""
+    session_id = get_or_create_session(session_id)
+    user_history = session_data[session_id]['history']
+    
     if category and category != "All":
         filtered_history = [h for h in user_history if h["category"] == category]
-        return {"history": filtered_history}
-    return {"history": user_history}
+        response_data = {"history": filtered_history}
+    else:
+        response_data = {"history": user_history}
+    
+    response = Response(content=json.dumps(response_data), media_type="application/json")
+    response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
+    return response
 
 @app.delete("/api/history")
-async def clear_history():
-    """Clear user's history"""
-    global user_history
-    user_history = []
-    return {"status": "success"}
+async def clear_history(session_id: Optional[str] = Cookie(None)):
+    """Clear user's session history"""
+    session_id = get_or_create_session(session_id)
+    session_data[session_id]['history'] = []
+    
+    response = Response(content=json.dumps({"status": "success"}), media_type="application/json")
+    response.set_cookie("session_id", session_id, max_age=SESSION_TIMEOUT)
+    return response
 
-# Catch-all route to serve index.html for any unmatched routes (SPA behavior)
 @app.get("/{full_path:path}")
 async def catch_all(full_path: str):
     """Serve the main HTML file for any unmatched routes"""
-    # If it's an API route that doesn't exist, return 404
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API endpoint not found")
     
-    # For any other route, serve the main HTML file
-    return FileResponse("../frontend/index.html")
+    return FileResponse(os.path.join(project_root, "frontend", "index.html"))
 
 if __name__ == "__main__":
     import uvicorn
