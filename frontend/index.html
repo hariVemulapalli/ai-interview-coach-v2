@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>🎤 AI Interview Coach</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-microphone-alt"></i> AI Interview Coach</h1>
+            <p>Practice behavioral questions and get instant feedback!</p>
+        </header>
+
+        <main class="main-content">
+            <div class="content-grid">
+                <!-- Question Section -->
+                <section class="question-section">
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="category-select">
+                                <i class="fas fa-tags"></i> Question Category
+                            </label>
+                            <select id="category-select" class="select-input">
+                                <!-- Categories will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="custom-question">
+                                <i class="fas fa-edit"></i> Or enter your own question
+                            </label>
+                            <input type="text" id="custom-question" class="text-input" placeholder="Enter your custom question...">
+                        </div>
+                        
+                        <button id="new-question-btn" class="btn btn-secondary">
+                            <i class="fas fa-dice"></i> Get New Question
+                        </button>
+                    </div>
+
+                    <div class="question-display">
+                        <h3><i class="fas fa-brain"></i> Current Question:</h3>
+                        <div id="current-question" class="question-text">
+                            Select a category to get started!
+                        </div>
+                        <div id="question-source" class="question-source"></div>
+                    </div>
+                </section>
+
+                <!-- Answer Section -->
+                <section class="answer-section">
+                    <div class="control-group">
+                        <label for="user-answer">
+                            <i class="fas fa-comment-dots"></i> Your Answer
+                        </label>
+                        <textarea id="user-answer" class="textarea-input" placeholder="Type your answer here..." rows="8"></textarea>
+                    </div>
+
+                    <div class="feedback-controls">
+                        <div class="control-group">
+                            <label for="feedback-style">
+                                <i class="fas fa-cog"></i> Feedback Style
+                            </label>
+                            <select id="feedback-style" class="select-input">
+                                <option value="Detailed">Detailed</option>
+                                <option value="Concise">Concise</option>
+                                <option value="Friendly">Friendly</option>
+                            </select>
+                        </div>
+                        
+                        <button id="evaluate-btn" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Evaluate My Answer
+                        </button>
+                    </div>
+
+                    <div id="feedback-section" class="feedback-section" style="display: none;">
+                        <h3><i class="fas fa-chart-bar"></i> AI Feedback:</h3>
+                        <div id="feedback-content" class="feedback-content"></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- History Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-history"></i> Answer Archive</h3>
+                <div class="sidebar-controls">
+                    <select id="history-filter" class="select-input small">
+                        <option value="All">All Categories</option>
+                    </select>
+                    <button id="export-btn" class="btn btn-outline small">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <button id="clear-history-btn" class="btn btn-outline small">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
+                </div>
+            </div>
+            <div id="history-content" class="history-content">
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <p>Your past answers will appear here after evaluation.</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="spinner"></div>
+            <p>Analyzing your answer...</p>
+        </div>
+    </div>    <script src="/static/script.js"></script>
+</body>
+</html>

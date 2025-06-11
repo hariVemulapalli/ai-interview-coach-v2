@@ -1,0 +1,10 @@
+backend/.env
+test_api.sh
+migrate.sh
+create_new_repo.sh
+git_stating_strategy.sh
+migrate.sh
+NEW_REPOSITORY_STRATEGY.md
+PRODUCTION_DEPLOYMENT.md
+REFACTORING_COMPLETE.md
+test_api.sh
