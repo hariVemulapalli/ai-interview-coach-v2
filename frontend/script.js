@@ -26,10 +26,19 @@ const loadingModal = document.getElementById('loading-modal');
 // Auto-reset session on page load
 async function autoResetSession() {
     try {
-        await fetch(`${API_BASE_URL}/history`, { method: 'DELETE' });
-        console.log('✅ Session auto-reset on page load');
+        // FIRST: Clear backend data via API call
+        const response = await fetch(`${API_BASE_URL}/history`, { 
+            method: 'DELETE',
+            credentials: 'include'  // Important: include cookies for session
+        });
         
-        // Clear any existing UI data
+        if (response.ok) {
+            console.log('✅ Backend session cleared successfully');
+        } else {
+            console.log('⚠️ Backend clear failed, but continuing...');
+        }
+        
+        // THEN: Clear frontend UI data
         questionHistory = [];
         currentQuestion = '';
         currentCategory = '';
@@ -39,7 +48,16 @@ async function autoResetSession() {
         if (customQuestionInput) customQuestionInput.value = '';
         
         // Hide feedback section
-        hideFeedback();
+        if (typeof hideFeedback === 'function') {
+            hideFeedback();
+        }
+        
+        // Clear history display
+        if (historyContent) {
+            historyContent.innerHTML = '';
+        }
+        
+        console.log('✅ Complete session reset finished');
         
     } catch (error) {
         console.log('⚠️ Auto-reset failed (this is normal on first visit):', error);
