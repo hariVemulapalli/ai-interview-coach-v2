@@ -31,8 +31,8 @@ This application uses a modern web architecture:
 - Google Gemini API key (free tier is acceptable)
 
 ### 1. Backend Setup
-
-```bash
+bash:
+``` bash
 # Navigate to backend directory
 cd backend
 
@@ -49,7 +49,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 The frontend files are already in the `frontend` directory and will be served by the FastAPI backend.
 
 ### 3. Running the Application
-
+bash:
 ```bash
 # From the backend directory
 python app.py
