@@ -23,9 +23,34 @@ const exportBtn = document.getElementById('export-btn');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
 const loadingModal = document.getElementById('loading-modal');
 
+// Auto-reset session on page load
+async function autoResetSession() {
+    try {
+        await fetch(`${API_BASE_URL}/history`, { method: 'DELETE' });
+        console.log('✅ Session auto-reset on page load');
+        
+        // Clear any existing UI data
+        questionHistory = [];
+        currentQuestion = '';
+        currentCategory = '';
+        
+        // Clear form elements
+        if (userAnswerTextarea) userAnswerTextarea.value = '';
+        if (customQuestionInput) customQuestionInput.value = '';
+        
+        // Hide feedback section
+        hideFeedback();
+        
+    } catch (error) {
+        console.log('⚠️ Auto-reset failed (this is normal on first visit):', error);
+    }
+}
+
 // Initialize the application
 async function init() {
     try {
+        // First, reset the session for a clean start
+        await autoResetSession();
         await loadCategories();
         await loadHistory();
         setupEventListeners();
