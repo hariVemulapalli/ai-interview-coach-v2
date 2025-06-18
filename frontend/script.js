@@ -341,18 +341,20 @@ function updateHistoryDisplay() {
         `;
         return;
     }
-    
-    historyContent.innerHTML = '';
+      historyContent.innerHTML = '';
     filteredHistory.forEach((entry, index) => {
         const historyItem = createHistoryItem(entry, filteredHistory.length - index);
         historyContent.appendChild(historyItem);
     });
+    
+    // Add scroll indicators after a brief delay to allow content to render
+    setTimeout(addScrollIndicators, 100);
 }
 
 // Create history item element
 function createHistoryItem(entry, questionNumber) {
     const div = document.createElement('div');
-    div.className = 'history-item';
+    div.className = 'history-item collapsed'; // Start collapsed
     
     const styleInfo = entry.feedback_style ? ` (${entry.feedback_style})` : '';
     
@@ -363,28 +365,42 @@ function createHistoryItem(entry, questionNumber) {
     headerDiv.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span>Q${questionNumber} [${entry.category}]${styleInfo}</span>
-            <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: #64748b; transition: transform 0.3s ease;"></i>
+            <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: #64748b; transition: transform 0.3s ease; transform: rotate(-90deg);"></i>
         </div>
     `;
     
     // Add click event for collapse/expand
     headerDiv.addEventListener('click', () => {
         toggleSidebarHistoryItem(div);
-    });
-    
-    const contentDiv = document.createElement('div');
+    });    const contentDiv = document.createElement('div');
     contentDiv.className = 'history-item-content';
     contentDiv.innerHTML = `
-        <strong>Question:</strong> ${escapeHtml(entry.question)}<br><br>
-        <strong>Your Answer:</strong> ${escapeHtml(entry.answer)}<br><br>
-        <strong>AI Feedback:</strong><br>
-        <div class="feedback-markdown">${marked.parse(entry.feedback)}</div>
+        <strong>Question:</strong>
+        <div class="history-question-content">${escapeHtml(entry.question)}</div>
+        <strong>Your Answer:</strong>
+        <div class="history-answer-content">${escapeHtml(entry.answer)}</div>
+        <strong>AI Feedback:</strong>
+        <div class="history-feedback-content feedback-markdown">${marked.parse(entry.feedback)}</div>
     `;
     
     div.appendChild(headerDiv);
     div.appendChild(contentDiv);
     
     return div;
+}
+
+// Check if content is scrollable and add indicator
+function addScrollIndicators() {
+    const scrollableElements = document.querySelectorAll('.history-question-content, .history-answer-content, .history-feedback-content');
+    
+    scrollableElements.forEach(element => {
+        // Check if content is scrollable
+        if (element.scrollHeight > element.clientHeight) {
+            element.classList.add('scrollable');
+        } else {
+            element.classList.remove('scrollable');
+        }
+    });
 }
 
 // Toggle sidebar history item collapse/expand
@@ -396,6 +412,8 @@ function toggleSidebarHistoryItem(historyItem) {
         // Expanding
         historyItem.classList.remove('collapsed');
         chevron.style.transform = 'rotate(0deg)';
+        // Add scroll indicators after expansion animation
+        setTimeout(addScrollIndicators, 400);
     } else {
         // Collapsing
         historyItem.classList.add('collapsed');
@@ -632,12 +650,14 @@ function updateArchiveModalDisplay() {
         `;
         return;
     }
-    
-    archiveModalContent.innerHTML = '';
+      archiveModalContent.innerHTML = '';
     filteredHistory.forEach((entry, index) => {
         const historyItem = createArchiveModalHistoryItem(entry, filteredHistory.length - index);
         archiveModalContent.appendChild(historyItem);
     });
+    
+    // Add scroll indicators for archive modal content
+    setTimeout(addScrollIndicators, 100);
 }
 
 // Create history item element for archive modal (larger format)
@@ -671,24 +691,22 @@ function createArchiveModalHistoryItem(entry, questionNumber) {
             <i class="fas fa-question-circle" style="color: #667eea;"></i>
             Question ${questionNumber} [${entry.category}]${styleInfo}
         </div>
-    `;
-    
-    const contentDiv = document.createElement('div');
+    `;    const contentDiv = document.createElement('div');
     contentDiv.className = 'history-item-content';
     contentDiv.innerHTML = `
         <div style="margin-bottom: 20px;">
             <strong><i class="fas fa-brain" style="margin-right: 6px; color: #667eea;"></i>Question:</strong>
-            <div style="margin-top: 8px; padding: 12px; background: white; border-radius: 6px; border-left: 3px solid #667eea;">${escapeHtml(entry.question)}</div>
+            <div class="history-question-content" style="margin-top: 8px; border-left: 3px solid #667eea;">${escapeHtml(entry.question)}</div>
         </div>
         
         <div style="margin-bottom: 20px;">
             <strong><i class="fas fa-user" style="margin-right: 6px; color: #10b981;"></i>Your Answer:</strong>
-            <div style="margin-top: 8px; padding: 12px; background: white; border-radius: 6px; border-left: 3px solid #10b981;">${escapeHtml(entry.answer)}</div>
+            <div class="history-answer-content" style="margin-top: 8px; border-left: 3px solid #10b981;">${escapeHtml(entry.answer)}</div>
         </div>
         
         <div>
             <strong><i class="fas fa-robot" style="margin-right: 6px; color: #f59e0b;"></i>AI Feedback:</strong>
-            <div class="feedback-markdown">${marked.parse(entry.feedback)}</div>
+            <div class="history-feedback-content feedback-markdown" style="margin-top: 8px; border-left: 3px solid #f59e0b;">${marked.parse(entry.feedback)}</div>
         </div>
     `;
     

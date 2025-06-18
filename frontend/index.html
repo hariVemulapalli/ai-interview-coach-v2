@@ -94,11 +94,13 @@
                     </button>
                     <button id="export-btn" class="btn btn-outline small">
                         <i class="fas fa-download"></i> Export
-                    </button>
-                    <button id="clear-history-btn" class="btn btn-outline small">
+                    </button>                    <button id="clear-history-btn" class="btn btn-outline small">
                         <i class="fas fa-trash"></i> Clear
                     </button>
-                    <p>Click 'Expand' for more options </p>
+                    <div class="history-info-note">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Click <strong>Expand</strong> for more options and to see more of the responses. To see full responses, use <strong>Export</strong>.</span>
+                    </div>
                 </div>
             </div>
             <div id="history-content" class="history-content">
@@ -122,8 +124,7 @@
                 <button id="close-archive-modal" class="btn-close">
                     <i class="fas fa-times"></i>
                 </button>
-            </div>
-            <div class="modal-body">                <div class="archive-modal-controls">
+            </div>            <div class="modal-body">                <div class="archive-modal-controls">
                     <select id="archive-modal-filter" class="select-input">
                         <option value="All">All Categories</option>
                     </select>
@@ -144,6 +145,10 @@
                             <i class="fas fa-trash"></i> Clear All
                         </button>
                     </div>
+                </div>
+                <div class="archive-modal-info-note">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>There may be truncated parts for each question and section. For completely untruncated content, use <strong>Export</strong> to download as text file.</span>
                 </div>
                 <div id="archive-modal-content" class="archive-modal-content">
                     <!-- History items will be populated here -->
