@@ -42,6 +42,12 @@ To run this application on your local machine
 ### 1. Backend Setup
 bash:
 ``` bash
+# Clone Repository
+git clone https://github.com/your-username/ai-interview-coach-v2.git
+
+# Navigate to the local repository (NOTE: please do not commit to the repository; consider a separate repository for this)
+cd ai-interview-coach-v2
+
 # Navigate to backend directory
 cd backend
 
@@ -99,7 +105,11 @@ The application will be available at: `http://localhost:8000`
 4. **Scalability**: Easy to deploy and scale the API separately
 5. **Mobile-First**: Fully responsive design for all devices
 
-## Development
+[Click here to check out the streamlit version (outdated)](https://ai-interview-coach.streamlit.app/)
+
+[Click here to see repository for initial version that was on streamlit](https://github.com/hariVemulapalli/ai-interview-coach)
+
+## Development (using in local machine)
 
 To modify the application:
 
@@ -108,5 +118,7 @@ To modify the application:
 3. **Styling**: Modify `frontend/style.css` for visual changes
 4. **Functionality**: Update `frontend/script.js` for behavior changes
 5. **Question database**: Update `questions.json` to add, edit, or remove questions
+
+**NOTE**: If you are going to make changes to the parts other than app.py, it is suggested to reload the application on the website.
 
 Built with ❤️ by Hari Vemulapalli
